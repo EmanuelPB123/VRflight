@@ -1,0 +1,703 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Simulador de Vuelo con Terrain 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <script src="night2.js"></script>
+    <script src="phone.js"></script>
+    <script>
+        AFRAME.registerComponent('no-repeat-terrain', {
+            schema: {
+                width: { type: 'number', default: 50 },
+                depth: { type: 'number', default: 50 },
+                height: { type: 'number', default: 10 },
+                resolution: { type: 'number', default: 200 },
+                src: { type: 'string', default: '#heightmap' },
+                color: { type: 'string', default: '#4CAF50' },
+                wireframe: { type: 'boolean', default: false },
+                textureSrc: { type: 'string', default: '' },
+                displacementScale: { type: 'number', default: 1 }
+            },
+
+            init: function () {
+                const data = this.data;
+                const el = this.el;
+
+                // Crear un elemento canvas para procesar la imagen
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Cargar la imagen del heightmap
+                const heightmapImg = new Image();
+                heightmapImg.crossOrigin = "Anonymous";
+
+                heightmapImg.onload = () => {
+                    // Configurar el canvas al tamaño de la imagen
+                    canvas.width = heightmapImg.width;
+                    canvas.height = heightmapImg.height;
+
+                    // Dibujar la imagen en el canvas
+                    ctx.drawImage(heightmapImg, 0, 0);
+
+                    // Obtener los datos de la imagen
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+                    // Crear la geometría con mayor resolución
+                    const geometry = new THREE.PlaneGeometry(
+                        data.width,
+                        data.depth,
+                        data.resolution,
+                        data.resolution
+                    );
+
+                    // Rotar el plano para que esté horizontal
+                    geometry.rotateX(-Math.PI / 2);
+
+                    // Obtener vértices y coordenadas UV
+                    const vertices = geometry.attributes.position.array;
+                    const uvs = geometry.attributes.uv.array;
+
+                    // Para cada vértice, ajustar su altura según el heightmap
+                    for (let i = 0, j = 0; i < vertices.length; i += 3, j += 2) {
+                        // Mapear coordenadas del mundo a coordenadas de la imagen
+                        const x = ((vertices[i] / data.width) + 0.5) * canvas.width;
+                        const z = ((vertices[i + 2] / data.depth) + 0.5) * canvas.height;
+
+                        // Implementar interpolación bilineal para obtener alturas más suaves
+                        const x1 = Math.floor(x);
+                        const x2 = Math.min(Math.ceil(x), canvas.width - 1);
+                        const z1 = Math.floor(z);
+                        const z2 = Math.min(Math.ceil(z), canvas.height - 1);
+
+                        const xWeight = x - x1;
+                        const zWeight = z - z1;
+
+                        // Obtener valores de altura de los 4 píxeles más cercanos
+                        const idx11 = (z1 * canvas.width + x1) * 4;
+                        const idx12 = (z2 * canvas.width + x1) * 4;
+                        const idx21 = (z1 * canvas.width + x2) * 4;
+                        const idx22 = (z2 * canvas.width + x2) * 4;
+
+                        // Promediar RGB para mayor precisión
+                        const h11 = (imageData[idx11] + imageData[idx11 + 1] + imageData[idx11 + 2]) / (3 * 255);
+                        const h12 = (imageData[idx12] + imageData[idx12 + 1] + imageData[idx12 + 2]) / (3 * 255);
+                        const h21 = (imageData[idx21] + imageData[idx21 + 1] + imageData[idx21 + 2]) / (3 * 255);
+                        const h22 = (imageData[idx22] + imageData[idx22 + 1] + imageData[idx22 + 2]) / (3 * 255);
+
+                        // Interpolación bilineal
+                        const h1 = h11 * (1 - xWeight) + h21 * xWeight;
+                        const h2 = h12 * (1 - xWeight) + h22 * xWeight;
+                        const finalHeight = h1 * (1 - zWeight) + h2 * zWeight;
+
+                        // Aplicar la altura con factor de desplazamiento
+                        vertices[i + 1] = finalHeight * data.height * data.displacementScale;
+                    }
+
+                    // Actualizar las normales para mejor iluminación
+                    geometry.computeVertexNormals();
+
+                    // Crear material
+                    let material;
+
+                    if (data.textureSrc) {
+                        // Si se proporciona una textura, cargar y aplicar
+                        const textureLoader = new THREE.TextureLoader();
+                        textureLoader.crossOrigin = "Anonymous";
+
+                        // Cargar la textura base
+                        const texture = textureLoader.load(document.querySelector(data.textureSrc).getAttribute('src'));
+
+                        // Configurar la textura para que NO se repita
+                        texture.wrapS = THREE.ClampToEdgeWrapping;
+                        texture.wrapT = THREE.ClampToEdgeWrapping;
+
+                        // Evitar repetición con estos parámetros
+                        texture.repeat.set(1, 1);
+
+                        material = new THREE.MeshStandardMaterial({
+                            map: texture,
+                            roughness: 0.8,
+                            metalness: 0.2,
+                            flatShading: false,
+                            wireframe: data.wireframe,
+                            side: THREE.DoubleSide
+                        });
+                    } else {
+                        // Sin textura, usar color sólido
+                        material = new THREE.MeshPhongMaterial({
+                            color: data.color,
+                            shininess: 0,
+                            flatShading: false,
+                            wireframe: data.wireframe,
+                            side: THREE.DoubleSide
+                        });
+                    }
+
+                    // Crear la malla con geometría detallada
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    // Agregar sombras
+                    mesh.receiveShadow = true;
+
+                    el.setObject3D('mesh', mesh);
+                };
+
+                // Establecer la fuente de la imagen
+                const imgSrc = document.querySelector(data.src).getAttribute('src');
+                heightmapImg.src = imgSrc;
+            }
+        });
+
+        // Componente para el simulador de vuelo
+        AFRAME.registerComponent('flight-controls', {
+            schema: {
+                speed: { type: 'number', default: 0.1 },
+                maxSpeed: { type: 'number', default: 2.0 },
+                doublespeed: { type: 'number', default: 4.0 }, // Velocidad doble
+                minSpeed: { type: 'number', default: 0.05 },
+                rotationSpeed: { type: 'number', default: 2.0 },
+                pitchSensitivity: { type: 'number', default: 0.05 },
+                rollSensitivity: { type: 'number', default: 0.05 },
+                altitudeMin: { type: 'number', default: 2.0 }
+            },
+
+            init: function () {
+                this.velocity = new THREE.Vector3(0, 0, -this.data.maxSpeed); // Iniciar a velocidad máxima
+                this.rotation = { x: 0, y: 0, z: 0 };
+                this.currentSpeed = this.data.maxSpeed; // Iniciar a velocidad máxima
+
+                // Almacenar la posición inicial
+                const position = this.el.getAttribute('position');
+                this.altitude = position.y;
+
+                // Crear UI para mostrar velocidad
+                this.createSpeedometer();
+
+                // Evento de colisión con el terreno
+                this.terrainCollision = false;
+
+                // Configurar manejadores de eventos
+                document.addEventListener('keydown', this.onKeyDown.bind(this));
+                document.addEventListener('keyup', this.onKeyUp.bind(this));
+
+                // Variables para el control de la orientación
+                this.pitch = 0; // inclinación hacia arriba/abajo
+                this.roll = 0;  // inclinación lateral
+                this.yaw = 0;   // dirección de vuelo horizontal
+
+                this.keysPressed = {
+                    ArrowUp: false,
+                    ArrowDown: false,
+                    ArrowLeft: false,
+                    ArrowRight: false,
+                    KeyW: false,
+                    KeyS: false,
+                    KeyA: false,
+                    KeyD: false,
+                    Space: false,
+                    ShiftLeft: false
+                };
+            },
+
+            createSpeedometer: function () {
+                const speedometer = document.createElement('div');
+                speedometer.id = 'speedometer';
+                speedometer.style.position = 'fixed';
+                speedometer.style.bottom = '20px';
+                speedometer.style.left = '20px';
+                speedometer.style.background = 'rgba(0, 0, 0, 0.5)';
+                speedometer.style.color = 'white';
+                speedometer.style.padding = '10px';
+                speedometer.style.borderRadius = '5px';
+                speedometer.style.fontFamily = 'monospace';
+                speedometer.style.zIndex = '9999';
+                speedometer.innerHTML = 'Velocidad: 0 km/h | Altura: 0 m';
+                document.body.appendChild(speedometer);
+                this.speedometer = speedometer;
+            },
+
+            updateSpeedometer: function () {
+                const speedKmh = Math.round(this.currentSpeed * 100);
+                const altitude = Math.round(this.altitude);
+                const speedPercentage = Math.round((this.currentSpeed / this.data.maxSpeed) * 100);
+
+                // Actualizar texto del velocímetro
+                this.speedometer.innerHTML = `Velocidad: ${speedKmh} km/h (${speedPercentage}%) | Altura: ${altitude} m | Inclinación: ${Math.round(this.pitch * 100) / 100}`;
+
+                // Cambiar color según velocidad
+                if (this.currentSpeed > this.data.maxSpeed * 1.5) {
+                    this.speedometer.style.color = 'red';
+                } else if (this.currentSpeed > this.data.maxSpeed) {
+                    this.speedometer.style.color = 'orange';
+                } else if (this.currentSpeed > this.data.maxSpeed * 0.5) {
+                    this.speedometer.style.color = 'yellow';
+                } else {
+                    this.speedometer.style.color = 'white';
+                }
+
+                // Advertencia de altitud baja
+                if (this.altitude < this.data.altitudeMin * 2) {
+                    this.speedometer.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+                } else {
+                    this.speedometer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                }
+            },
+
+            onKeyDown: function (event) {
+                if (event.code in this.keysPressed) {
+                    this.keysPressed[event.code] = true;
+                }
+            },
+
+            onKeyUp: function (event) {
+                if (event.code in this.keysPressed) {
+                    this.keysPressed[event.code] = false;
+                }
+            },
+
+            tick: function (time, deltaTime) {
+                if (!deltaTime) return;
+
+                const deltaSeconds = deltaTime / 1000;
+
+                // Get camera rotation and convert to radians
+                const cameraRotation = this.el.getAttribute('rotation');
+
+                // Calculate actual pitch relative to world horizontal plane
+                // This ensures consistent up/down behavior regardless of starting orientation
+                const pitchRad = THREE.MathUtils.degToRad(cameraRotation.x);
+                const yawRad = THREE.MathUtils.degToRad(cameraRotation.y);
+
+                // Update pitch for flight behavior
+                this.pitch = pitchRad;
+
+                // Handle roll (banking) controls
+                if (this.keysPressed.KeyA || this.keysPressed.ArrowLeft) {
+                    this.roll = THREE.MathUtils.clamp(this.roll + this.data.rollSensitivity, -Math.PI / 4, Math.PI / 4);
+                    this.yaw += this.data.rotationSpeed * deltaSeconds;
+                } else if (this.keysPressed.KeyD || this.keysPressed.ArrowRight) {
+                    this.roll = THREE.MathUtils.clamp(this.roll - this.data.rollSensitivity, -Math.PI / 4, Math.PI / 4);
+                    this.yaw -= this.data.rotationSpeed * deltaSeconds;
+                } else {
+                    this.roll *= 0.95;
+                }
+
+                const pitchThreshold = 0.1;
+
+                // Calculate vertical component based on pitch
+                const verticalFactor = Math.sin(pitchRad);
+
+                if (Math.abs(pitchRad) < pitchThreshold) {
+                    // Level flight
+                    this.currentSpeed = THREE.MathUtils.lerp(this.currentSpeed, this.data.maxSpeed, deltaSeconds * 2);
+                    this.velocity.y *= 0.95;
+                } else {
+                    // Pitched flight (up or down)
+                    const pitchFactor = Math.min(Math.abs(verticalFactor) * 3, 1);
+
+                    if (verticalFactor > 0) {
+                        // Climbing
+                        const targetSpeed = THREE.MathUtils.lerp(
+                            this.data.maxSpeed,
+                            this.data.minSpeed,
+                            pitchFactor
+                        );
+                        this.currentSpeed = THREE.MathUtils.lerp(this.currentSpeed, targetSpeed, deltaSeconds * 3);
+                        this.velocity.y = this.currentSpeed * pitchFactor;
+                    } else {
+                        // Diving
+                        const targetSpeed = THREE.MathUtils.lerp(
+                            this.data.maxSpeed,
+                            this.data.doublespeed,
+                            pitchFactor
+                        );
+                        this.currentSpeed = THREE.MathUtils.lerp(this.currentSpeed, targetSpeed, deltaSeconds * 3);
+                        this.velocity.y = -this.currentSpeed * pitchFactor;
+                    }
+                }
+
+                // Handle manual speed controls
+                if (this.keysPressed.ShiftLeft) {
+                    this.currentSpeed = THREE.MathUtils.clamp(
+                        this.currentSpeed + deltaSeconds * 2,
+                        this.data.minSpeed,
+                        this.data.doublespeed
+                    );
+                }
+                if (this.keysPressed.Space) {
+                    this.currentSpeed = THREE.MathUtils.clamp(
+                        this.currentSpeed - deltaSeconds * 2,
+                        this.data.minSpeed,
+                        this.data.doublespeed
+                    );
+                }
+
+                // Calculate movement direction based on camera orientation
+                const direction = new THREE.Vector3(0, 0, -1);
+                const rotationQuaternion = new THREE.Quaternion();
+                rotationQuaternion.setFromEuler(new THREE.Euler(
+                    this.pitch,
+                    yawRad,
+                    this.roll,
+                    'YXZ' // Important: Use YXZ order for proper flight orientation
+                ));
+
+                direction.applyQuaternion(rotationQuaternion);
+                direction.normalize();
+
+                // Apply velocity in the direction we're facing
+                this.velocity.x = direction.x * this.currentSpeed;
+                this.velocity.z = direction.z * this.currentSpeed;
+                // Y velocity is already set based on pitch
+
+                // Obtener la posición actual
+                const position = this.el.getAttribute('position');
+
+                // Calcular nueva posición
+                position.x += this.velocity.x;
+                position.y += this.velocity.y;
+                position.z += this.velocity.z;
+
+                // Almacenar la altitud
+                this.altitude = position.y;
+
+                // Evitar colisión con el suelo (altitud mínima)
+                if (position.y < this.data.altitudeMin) {
+                    position.y = this.data.altitudeMin;
+
+                    // Mostrar mensaje de colisión
+                    if (!this.terrainCollision) {
+                        this.terrainCollision = true;
+                        this.showCollisionWarning();
+
+                        // Rebote suave
+                        this.velocity.y = Math.abs(this.velocity.y) * 0.5;
+                    }
+                } else {
+                    this.terrainCollision = false;
+                }
+
+                // Aplicar los cambios de posición
+                this.el.setAttribute('position', position);
+
+                // Actualizar el velocímetro
+                this.updateSpeedometer();
+            },
+
+            showCollisionWarning: function () {
+                const warning = document.createElement('div');
+                warning.style.position = 'fixed';
+                warning.style.top = '50%';
+                warning.style.left = '50%';
+                warning.style.transform = 'translate(-50%, -50%)';
+                warning.style.background = 'rgba(255, 0, 0, 0.7)';
+                warning.style.color = 'white';
+                warning.style.padding = '20px';
+                warning.style.borderRadius = '10px';
+                warning.style.fontFamily = 'Arial, sans-serif';
+                warning.style.fontWeight = 'bold';
+                warning.style.zIndex = '10000';
+                warning.innerHTML = '¡COLISIÓN CON EL TERRENO!';
+
+                document.body.appendChild(warning);
+
+                // Eliminar después de 2 segundos
+                setTimeout(() => {
+                    document.body.removeChild(warning);
+                }, 2000);
+            }
+        });
+    </script>
+    <style>
+        #instructions {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            max-width: 300px;
+            z-index: 9999;
+        }
+
+        .key {
+            background: #444;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+
+        /* Nuevos estilos para la pantalla de selección */
+        #aircraft-selection {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .aircraft-options {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .aircraft-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .aircraft-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .aircraft-card.selected {
+            border: 2px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .start-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .start-button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .start-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Pantalla de selección de avión -->
+    <div id="aircraft-selection">
+        <h1>Selecciona tu Avión</h1>
+        <div class="aircraft-options">
+            <div class="aircraft-card" data-aircraft="ligero">
+                <h3>Avión Ligero</h3>
+                <p>Velocidad Máxima: 150 km/h</p>
+                <p>Alta maniobrabilidad</p>
+                <p>Ideal para entrenamiento</p>
+            </div>
+            <div class="aircraft-card" data-aircraft="medio">
+                <h3>Avión Medio</h3>
+                <p>Velocidad Máxima: 250 km/h</p>
+                <p>Balance entre velocidad y control</p>
+                <p>Perfecto para vuelos recreativos</p>
+            </div>
+            <div class="aircraft-card" data-aircraft="rapido">
+                <h3>Avión Rápido</h3>
+                <p>Velocidad Máxima: 400 km/h</p>
+                <p>Alta velocidad</p>
+                <p>Para pilotos experimentados</p>
+            </div>
+        </div>
+        <button id="start-flight" class="start-button" disabled>Comenzar Vuelo</button>
+    </div>
+
+    <div id="instructions">
+        <h3>Controles de Vuelo</h3>
+        <!--         <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o
+            <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
+            para controlar la dirección
+        </p> -->
+        <p>Vuelo <strong>horizontal</strong> = velocidad máxima</p>
+        <p>Mira hacia <strong>arriba</strong> para reducir velocidad</p>
+        <p>Mira hacia <strong>abajo</strong> para aumentar velocidad hasta el doble</p>
+        <!--        <p><span class="key">Shift</span> para acelerar manualmente</p>
+        <p><span class="key">Espacio</span> para frenar manualmente</p>
+        <p>Click y arrastrar para mirar alrededor</p>
+        <p>Presiona <span class="key">ESC</span> para salir del modo vuelo</p> -->
+    </div>
+
+    <a-scene background="color: #000000" shadow="type: pcfsoft">
+        <!-- Definir los assets para el heightmap y textura -->
+        <a-assets>
+            <!-- Reemplaza estas URLs con las rutas a tus imágenes -->
+            <img id="heightmap" src="/heightmapper-1741736759601.png" alt="heightmap">
+            <img id="terrain-texture"
+                src="/Google Maps y 7 páginas más - Personal_ Microsoft​ Edge 11_3_2025 20_45_52.png"
+                alt="terrain texture">
+            <!-- <img id="sky-texture" src="/api/placeholder/1000/500" alt="sky texture"> -->
+        </a-assets>
+
+        <!-- Skybox para un cielo más inmersivo -->
+        <!--         <a-sky src="#sky-texture" radius="5000"></a-sky> -->
+
+        <!-- Terreno sin repetición usando el heightmap -->
+        <a-entity no-repeat-terrain="
+          width: 400; 
+          depth: 500; 
+          height: 8; 
+          resolution: 500; 
+          src: #heightmap;
+          textureSrc: #terrain-texture;
+          displacementScale: 1.5" position="-10 10 0" scale="100 100 100">
+        </a-entity>
+
+        <!-- Añadir un cielo que cambiará de color -->
+
+
+        <!-- Sistema de iluminación mejorado -->
+        <!--                  <a-entity light="type: ambient; color: #BBB; intensity: 0.3"></a-entity> -->
+        <a-entity day-night-cycle="
+        cycleDuration: 60000; 
+        sunMaxIntensity: 0.8; 
+        sunMinIntensity: 0.1;
+        moonIntensity: 0.1;
+        celestialDistance: 500;">
+        </a-entity>
+
+        <!--         <a-entity light="type: hemisphere; color: #CEF; groundColor: #49A; intensity: 0.4"></a-entity> -->
+
+
+
+
+        <!-- Cámara del avión con controles de vuelo -->
+        <a-entity id="plane" position="0 60 0" rotation="0 0 0" camera="fov: 80"
+            look-controls="pointerLockEnabled: true" flight-controls="
+                  speed: 0;
+                  maxSpeed: 0;
+                  doublespeed: 0;
+                  minSpeed: 0;
+                  rotationSpeed: 1.0;
+                  pitchSensitivity: 0.05;
+                  rollSensitivity: 0.05;
+                  altitudeMin: 2.0">
+            <a-sky color="#87CEEB" radius="9000"></a-sky>
+
+            <!--                     <a-scene background="color: black"> -->
+            <!-- Cielo -->
+            <!--                     <a-sky color="#000000" radius="500"></a-sky> -->
+
+            <!-- Luces -->
+            <!--                     <a-entity id="ambient" light="type: ambient; color: #000000; intensity: 0.0"></a-entity> 
+                    <a-entity id="sun-directional" light="type: directional; color: #000000; intensity: 0.0;" position="1 1 1"></a-entity>
+                    <a-entity id="moon-directional" light="type: directional; color: #000000; intensity: 0.0; " position="-1 1 1"></a-entity>
+                    <a-entity id="hemisphere" light="type: hemisphere; color: #8EBBFF; groundColor: #5D8851; intensity: 0.0"></a-entity>
+                     -->
+            <!-- Componente para el ciclo día/noche -->
+            <!--                     <a-entity realistic-day-night-cycle="duration: 30000"></a-entity> -->
+
+            <!-- Suelo con reflexión de la luz del cielo -->
+            <!--  <a-plane id="ground" position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4" shadow="receive: true"></a-plane> -->
+
+        </a-entity>
+    </a-scene>
+
+    <script>
+        // Configuración de los tipos de aviones
+        const aircraftTypes = {
+            ligero: {
+                maxSpeed: 1.5,
+                doubleSpeed: 3.0,
+                minSpeed: 0.05,
+                rotationSpeed: 2.0
+            },
+            medio: {
+                maxSpeed: 2.0,
+                doubleSpeed: 4.0,
+                minSpeed: 0.05,
+                rotationSpeed: 1.5
+            },
+            rapido: {
+                maxSpeed: 3.0,
+                doubleSpeed: 6.0,
+                minSpeed: 0.1,
+                rotationSpeed: 1.0
+            }
+        };
+
+        let selectedAircraft = null;
+        const aircraftCards = document.querySelectorAll('.aircraft-card');
+        const startButton = document.getElementById('start-flight');
+        const selectionScreen = document.getElementById('aircraft-selection');
+        const planeEntity = document.getElementById('plane');
+
+        // Asegurarse de que la velocidad inicial sea 0
+        planeEntity.setAttribute('flight-controls', {
+            speed: 0,
+            maxSpeed: 0,
+            doublespeed: 0,
+            minSpeed: 0
+        });
+
+        // Manejar la selección de avión
+        aircraftCards.forEach(card => {
+            card.addEventListener('click', () => {
+                aircraftCards.forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedAircraft = card.dataset.aircraft;
+                startButton.disabled = false;
+            });
+        });
+
+        // Iniciar el vuelo con aceleración gradual
+        startButton.addEventListener('click', () => {
+            if (selectedAircraft) {
+                const config = aircraftTypes[selectedAircraft];
+
+                // Iniciar con velocidad 0 y acelerar gradualmente
+                planeEntity.setAttribute('flight-controls', {
+                    speed: 0,
+                    maxSpeed: 0,
+                    doublespeed: 0,
+                    minSpeed: 0,
+                    rotationSpeed: config.rotationSpeed,
+                    pitchSensitivity: 0.05,
+                    rollSensitivity: 0.05,
+                    altitudeMin: 2.0
+                });
+
+                // Gradualmente aumentar la velocidad después de 1 segundo
+                setTimeout(() => {
+                    planeEntity.setAttribute('flight-controls', {
+                        speed: 0.1,
+                        maxSpeed: config.maxSpeed,
+                        doublespeed: config.doubleSpeed,
+                        minSpeed: config.minSpeed,
+                        rotationSpeed: config.rotationSpeed,
+                        pitchSensitivity: 0.05,
+                        rollSensitivity: 0.05,
+                        altitudeMin: 2.0
+                    });
+                }, 1000);
+
+                // Ocultar la pantalla de selección
+                selectionScreen.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>
