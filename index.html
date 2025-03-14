@@ -2,10 +2,10 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Simulador de Vuelo con Terrain 3D</title>
+    <title>Simulador de Vuelo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <script src="night2.js"></script>
-    <script src="phone.js"></script>
+    <script src="night3.js"></script>
+    <script src="star.js"></script>
     <script>
         AFRAME.registerComponent('no-repeat-terrain', {
             schema: {
@@ -495,6 +495,34 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        /* Estilos para el minimapa */
+        #minimap-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #444;
+            border-radius: 5px;
+            z-index: 9999;
+        }
+
+        #minimap {
+            width: 100%;
+            height: 100%;
+        }
+
+        #player-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+        }
     </style>
 </head>
 
@@ -527,20 +555,20 @@
 
     <div id="instructions">
         <h3>Controles de Vuelo</h3>
-        <!--         <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o
+<!--         <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o
             <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
             para controlar la dirección
         </p> -->
         <p>Vuelo <strong>horizontal</strong> = velocidad máxima</p>
         <p>Mira hacia <strong>arriba</strong> para reducir velocidad</p>
         <p>Mira hacia <strong>abajo</strong> para aumentar velocidad hasta el doble</p>
-        <!--        <p><span class="key">Shift</span> para acelerar manualmente</p>
+<!--         <p><span class="key">Shift</span> para acelerar manualmente</p>
         <p><span class="key">Espacio</span> para frenar manualmente</p>
         <p>Click y arrastrar para mirar alrededor</p>
         <p>Presiona <span class="key">ESC</span> para salir del modo vuelo</p> -->
     </div>
 
-    <a-scene background="color: #000000" shadow="type: pcfsoft">
+    <a-scene shadow="type: pcfsoft">
         <!-- Definir los assets para el heightmap y textura -->
         <a-assets>
             <!-- Reemplaza estas URLs con las rutas a tus imágenes -->
@@ -548,43 +576,26 @@
             <img id="terrain-texture"
                 src="Google Maps y 7 páginas más - Personal_ Microsoft​ Edge 11_3_2025 20_45_52.png"
                 alt="terrain texture">
-            <!-- <img id="sky-texture" src="/api/placeholder/1000/500" alt="sky texture"> -->
         </a-assets>
 
-        <!-- Skybox para un cielo más inmersivo -->
-        <!--         <a-sky src="#sky-texture" radius="5000"></a-sky> -->
+        <!-- Iluminación dinámica (invisible) -->
+        <a-entity id="directionalLight" light="type: directional; color: #FFF; intensity: 0.8; castShadow: true"
+            position="-0.5 1 1"></a-entity>
+        <a-entity id="ambientLight" light="type: ambient; color: #FFF; intensity: 0.3"></a-entity>
 
         <!-- Terreno sin repetición usando el heightmap -->
         <a-entity no-repeat-terrain="
-          width: 400; 
+          width: 500; 
           depth: 500; 
-          height: 8; 
-          resolution: 500; 
+          height: 10; 
+          resolution: 1500; 
           src: #heightmap;
           textureSrc: #terrain-texture;
-          displacementScale: 1.5" position="-10 10 0" scale="100 100 100">
+          displacementScale: 1.2" position="0 0 0" scale="10 10 10">
         </a-entity>
-
-        <!-- Añadir un cielo que cambiará de color -->
-
-
-        <!-- Sistema de iluminación mejorado -->
-        <!--                  <a-entity light="type: ambient; color: #BBB; intensity: 0.3"></a-entity> -->
-        <a-entity day-night-cycle="
-        cycleDuration: 60000; 
-        sunMaxIntensity: 0.8; 
-        sunMinIntensity: 0.1;
-        moonIntensity: 0.1;
-        celestialDistance: 500;">
-        </a-entity>
-
-        <!--         <a-entity light="type: hemisphere; color: #CEF; groundColor: #49A; intensity: 0.4"></a-entity> -->
-
-
-
 
         <!-- Cámara del avión con controles de vuelo -->
-        <a-entity id="plane" position="0 60 0" rotation="0 0 0" camera="fov: 80"
+        <a-entity id="plane" position="0 20 0" rotation="0 0 0" camera="fov: 90"
             look-controls="pointerLockEnabled: true" flight-controls="
                   speed: 0;
                   maxSpeed: 0;
@@ -594,30 +605,27 @@
                   pitchSensitivity: 0.05;
                   rollSensitivity: 0.05;
                   altitudeMin: 2.0">
-            <a-sky color="#87CEEB" radius="9000"></a-sky>
 
-            <!--                     <a-scene background="color: black"> -->
-            <!-- Cielo -->
-            <!--                     <a-sky color="#000000" radius="500"></a-sky> -->
-
-            <!-- Luces -->
-            <!--                     <a-entity id="ambient" light="type: ambient; color: #000000; intensity: 0.0"></a-entity> 
-                    <a-entity id="sun-directional" light="type: directional; color: #000000; intensity: 0.0;" position="1 1 1"></a-entity>
-                    <a-entity id="moon-directional" light="type: directional; color: #000000; intensity: 0.0; " position="-1 1 1"></a-entity>
-                    <a-entity id="hemisphere" light="type: hemisphere; color: #8EBBFF; groundColor: #5D8851; intensity: 0.0"></a-entity>
-                     -->
-            <!-- Componente para el ciclo día/noche -->
-            <!--                     <a-entity realistic-day-night-cycle="duration: 30000"></a-entity> -->
-
-            <!-- Suelo con reflexión de la luz del cielo -->
-            <!--  <a-plane id="ground" position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4" shadow="receive: true"></a-plane> -->
-
+            <!-- HUD (Heads-Up Display) -->
+            <a-entity position="0 0 -0.5" scale="0.1 0.1 0.1">
+                <!-- Horizonte artificial (simplificado) -->
+                <a-entity geometry="primitive: plane; width: 2; height: 0.02" material="color: red"
+                    position="0 0 -1"></a-entity>
+            </a-entity>
         </a-entity>
     </a-scene>
 
     <script>
-        // Configuración de los tipos de aviones
-        const aircraftTypes = {
+        // Factores globales para cada tipo de parámetro
+        const speedFactors = {
+            maxSpeedFactor: 0.25,
+            doubleSpeedFactor: 0.25,
+            minSpeedFactor: 0.25,
+            rotationSpeedFactor: 0.25
+        };
+
+        // Configuración base de los tipos de aviones
+        const baseAircraftConfig = {
             ligero: {
                 maxSpeed: 1.5,
                 doubleSpeed: 3.0,
@@ -637,6 +645,43 @@
                 rotationSpeed: 1.0
             }
         };
+
+        // Función para actualizar la configuración de aviones con los factores actuales
+        function updateAircraftConfig() {
+            const aircraftTypes = {};
+
+            for (const [type, config] of Object.entries(baseAircraftConfig)) {
+                aircraftTypes[type] = {
+                    maxSpeed: config.maxSpeed * speedFactors.maxSpeedFactor,
+                    doubleSpeed: config.doubleSpeed * speedFactors.doubleSpeedFactor,
+                    minSpeed: config.minSpeed * speedFactors.minSpeedFactor,
+                    rotationSpeed: config.rotationSpeed * speedFactors.rotationSpeedFactor
+                };
+            }
+
+            return aircraftTypes;
+        }
+
+        // Función para cambiar un factor específico
+        function changeSpeedFactor(factorName, value) {
+            if (speedFactors.hasOwnProperty(factorName)) {
+                speedFactors[factorName] = value;
+                return updateAircraftConfig();
+            }
+            return null;
+        }
+
+        // Función para cambiar todos los factores a la vez
+        function changeAllSpeedFactors(maxFactor, doubleFactor, minFactor, rotationFactor) {
+            speedFactors.maxSpeedFactor = maxFactor;
+            speedFactors.doubleSpeedFactor = doubleFactor;
+            speedFactors.minSpeedFactor = minFactor;
+            speedFactors.rotationSpeedFactor = rotationFactor;
+            return updateAircraftConfig();
+        }
+
+        // Generar la configuración inicial
+        let aircraftTypes = updateAircraftConfig();
 
         let selectedAircraft = null;
         const aircraftCards = document.querySelectorAll('.aircraft-card');
@@ -697,7 +742,23 @@
                 selectionScreen.style.display = 'none';
             }
         });
+
+        // Ejemplos de uso:
+        // Para hacer todos los aviones 20% más rápidos:
+        // aircraftTypes = changeSpeedFactor('maxSpeedFactor', 1.2);
+
+        // Para hacer las rotaciones más lentas en un 30%:
+        // aircraftTypes = changeSpeedFactor('rotationSpeedFactor', 0.7);
+
+        // Para cambiar múltiples factores a la vez:
+        // aircraftTypes = changeAllSpeedFactors(1.5, 1.5, 1.0, 0.8);
     </script>
+
+    <!-- Agregar el contenedor del minimapa justo antes del cierre del body -->
+<!--     <div id="minimap-container">
+        <canvas id="minimap"></canvas>
+        <div id="player-marker"></div>
+    </div> -->
 </body>
 
 </html>
