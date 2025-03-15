@@ -2,10 +2,11 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Simulador de Vuelo</title>
+    <title>Simulador de Vuelo con Terrain 3D</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
     <script src="night3.js"></script>
-    <script src="star.js"></script>
+    <!--     <script src="star.js"></script> -->
+    <script src="cloud.js"></script>
     <script>
         AFRAME.registerComponent('no-repeat-terrain', {
             schema: {
@@ -555,14 +556,14 @@
 
     <div id="instructions">
         <h3>Controles de Vuelo</h3>
-<!--         <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o
+        <!--         <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> o
             <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
             para controlar la dirección
         </p> -->
         <p>Vuelo <strong>horizontal</strong> = velocidad máxima</p>
         <p>Mira hacia <strong>arriba</strong> para reducir velocidad</p>
         <p>Mira hacia <strong>abajo</strong> para aumentar velocidad hasta el doble</p>
-<!--         <p><span class="key">Shift</span> para acelerar manualmente</p>
+        <!--         <p><span class="key">Shift</span> para acelerar manualmente</p>
         <p><span class="key">Espacio</span> para frenar manualmente</p>
         <p>Click y arrastrar para mirar alrededor</p>
         <p>Presiona <span class="key">ESC</span> para salir del modo vuelo</p> -->
@@ -588,10 +589,10 @@
           width: 500; 
           depth: 500; 
           height: 10; 
-          resolution: 1500; 
+          resolution: 1750; 
           src: #heightmap;
           textureSrc: #terrain-texture;
-          displacementScale: 1.2" position="0 0 0" scale="10 10 10">
+          displacementScale: 2" position="0 0 0" scale="10 10 10">
         </a-entity>
 
         <!-- Cámara del avión con controles de vuelo -->
@@ -613,6 +614,10 @@
                     position="0 0 -1"></a-entity>
             </a-entity>
         </a-entity>
+
+        <!-- nuves 3d -->
+        <a-entity volumetric-clouds="minAltitude: 1000; maxAltitude: 12000; layers: 3; density: 0.7"></a-entity>
+
     </a-scene>
 
     <script>
@@ -755,7 +760,7 @@
     </script>
 
     <!-- Agregar el contenedor del minimapa justo antes del cierre del body -->
-<!--     <div id="minimap-container">
+    <!--     <div id="minimap-container">
         <canvas id="minimap"></canvas>
         <div id="player-marker"></div>
     </div> -->
