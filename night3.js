@@ -15,11 +15,12 @@ const NIGHT_SKY = '#1a2534';        // Noche - Azul muy oscuro
 const DEEP_NIGHT_SKY = '#0a0f14';   // Noche profunda - Negro azulado
 
       
-      // Colores de luz para las diferentes fases
-      const DAWN_LIGHT = '#ffcab3';       // Luz de amanecer - anaranjada
-      const DAY_LIGHT = '#fff1b3';        // Luz de día - blanca
-      const SUNSET_LIGHT = '#ffb0b0';     // Luz de atardecer - naranja rojizo
-      const NIGHT_LIGHT = '#7d7d7d';      // Luz de noche - azul oscuro
+// Colores de luz para las diferentes fases del día
+const DAWN_LIGHT = '#f9cba7';       // Luz de amanecer - Dorado suave
+const DAY_LIGHT = '#fff5c2';        // Luz de día - Amarillo pálido
+const SUNSET_LIGHT = '#ff9f80';     // Luz de atardecer - Naranja rojizo
+const NIGHT_LIGHT = '#3c3c3c';      // Luz de noche - Gris oscuro, ligeramente frío
+
       
       // Definir las fases del ciclo con tiempos y colores
       const cyclePhases = [
