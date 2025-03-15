@@ -5,14 +5,14 @@
       const ambientLight = document.querySelector('#ambientLight');
       
       // Colores para las diferentes fases del día
-      const DAWN_SKY = '#87CEFA';         // Amanecer - celeste claro
-      const MORNING_SKY = '#87CEEB';      // Mañana - celeste
-      const MIDDAY_SKY = '#4B9CD3';       // Mediodía - azul
-      const AFTERNOON_SKY = '#6495ED';    // Tarde - azul cobalto
-      const SUNSET_SKY = '#F08080';       // Atardecer - rojizo
-      const DUSK_SKY = '#483D8B';         // Anochecer - azul oscuro
-      const NIGHT_SKY = '#0C1445';        // Noche - azul muy oscuro
-      const DEEP_NIGHT_SKY = '#000033';   // Noche profunda - casi negro
+      const DAWN_SKY = '#d40000';         // Amanecer - celeste claro
+      const MORNING_SKY = '#0098d4';      // Mañana - celeste
+      const MIDDAY_SKY = '#105de8';       // Mediodía - azul
+      const AFTERNOON_SKY = '#0b4bbd';    // Tarde - azul cobalto
+      const SUNSET_SKY = '#a3231a';       // Atardecer - rojizo
+      const DUSK_SKY = '#143266';         // Anochecer - azul oscuro
+      const NIGHT_SKY = '#040a30';        // Noche - azul muy oscuro
+      const DEEP_NIGHT_SKY = '#000015';   // Noche profunda - casi negro
       
       // Colores de luz para las diferentes fases
       const DAWN_LIGHT = '#FF9966';       // Luz de amanecer - anaranjada
