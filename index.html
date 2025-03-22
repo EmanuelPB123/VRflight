@@ -7,6 +7,7 @@
     <script src="night3.js"></script>
     <!--     <script src="star.js"></script> -->
     <script src="cloud.js"></script>
+    <script src="camera-vibration.js"></script>
     <script>
         AFRAME.registerComponent('no-repeat-terrain', {
             schema: {
@@ -588,8 +589,8 @@
         <a-entity no-repeat-terrain="
           width: 500; 
           depth: 500; 
-          height: 10; 
-          resolution: 1750; 
+          height: 2; 
+          resolution: 1650; 
           src: #heightmap;
           textureSrc: #terrain-texture;
           displacementScale: 2" position="0 0 0" scale="10 10 10">
@@ -598,14 +599,14 @@
         <!-- Cámara del avión con controles de vuelo -->
         <a-entity id="plane" position="0 20 0" rotation="0 0 0" camera="fov: 90"
             look-controls="pointerLockEnabled: true" flight-controls="
-                  speed: 0;
-                  maxSpeed: 0;
-                  doublespeed: 0;
-                  minSpeed: 0;
-                  rotationSpeed: 1.0;
-                  pitchSensitivity: 0.05;
-                  rollSensitivity: 0.05;
-                  altitudeMin: 2.0">
+      speed: 0;
+      maxSpeed: 0;
+      doublespeed: 0;
+      minSpeed: 0;
+      rotationSpeed: 1.0;
+      pitchSensitivity: 0.05;
+      rollSensitivity: 0.05;
+      altitudeMin: 2.0" camera-vibration> <!-- Añadido aquí -->
 
             <!-- HUD (Heads-Up Display) -->
             <a-entity position="0 0 -0.5" scale="0.1 0.1 0.1">
